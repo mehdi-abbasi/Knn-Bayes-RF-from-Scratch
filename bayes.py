@@ -80,6 +80,7 @@ class Tree():
                 best_feature,threshold = self.best_feature(data)
                 node = Node(best_feature,threshold,False if d else True)
                 node.dataset = data
+                # print('----------',data)
                 self.add_node(node)
             else:
                 for n in range(2**(d-1)):
@@ -87,10 +88,12 @@ class Tree():
                     best_feature,threshold = self.best_feature(node.dataset[node.dataset[:,node.feature] < node.threshold])
                     node.left = Node(best_feature,threshold,False if d else True)
                     node.left.dataset = node.dataset[node.dataset[:,node.feature] < node.threshold]
+                    # print('----------',node.left.dataset)
                     self.add_node(node.left)
                     best_feature,threshold = self.best_feature(node.dataset[node.dataset[:,node.feature] > node.threshold])
                     node.right = Node(best_feature,threshold,False if d else True)
-                    node.right.dataset = node.dataset[node.dataset[:,node.feature] > node.threshold]             
+                    node.right.dataset = node.dataset[node.dataset[:,node.feature] > node.threshold]  
+                    # print('----------',node.right.dataset)           
                     self.add_node(node.right)
 
 
@@ -111,7 +114,8 @@ class Tree():
 
 
     def info(self,data,sel_features):
-        thresholds,target = ([self.features.mean(axis=0)[item] for item in sel_features],int(mode(data[:,-1])[0]))
+        # thresholds,target = ([self.features.mean(axis=0)[item] for item in sel_features],int(mode(data[:,-1])[0]))
+        thresholds,target = ([data.mean(axis=0)[item] for item in sel_features],int(mode(data[:,-1])[0]))
         data = data[:,np.append(sel_features,self.feature_dim)]
         targets = set(data[:,-1])
         total_entropy = 0
@@ -120,12 +124,17 @@ class Tree():
             total_entropy += p * log2(1/p)
 
         info = []
+        # print('fffff',sel_features)
+        # print('ttttt',thresholds)
+        # print('ddddd',data)
         for i in range(len(thresholds)):
             tru = (data[:,i] > thresholds[i]).sum()
             fls = (data[:,i] <= thresholds[i]).sum()
+            # print('tru:',tru)
+            # print('fls:',fls)
 
-            TP = np.logical_and(data[:,i] > thresholds[i],data[:,-1] == target).sum() / tru
-            FP = np.logical_and(data[:,i] > thresholds[i],data[:,-1] != target).sum() / tru
+            TP = np.logical_and(data[:,i] > thresholds[i],data[:,-1] == target).sum() / tru 
+            FP = np.logical_and(data[:,i] > thresholds[i],data[:,-1] != target).sum() / tru 
 
             FN = np.logical_and(data[:,i] <= thresholds[i],data[:,-1] == target).sum() / fls
             TN = np.logical_and(data[:,i] <= thresholds[i],data[:,-1] != target).sum() / fls

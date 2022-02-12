@@ -20,13 +20,19 @@ feature_train, feature_test, target_train, target_test = train_test_split(featur
 rn = bayes.Tree(feature_train,target_train,3)
 
 tt = rn.create_tree()
-print(tt[1].feature)
-print(tt[1].threshold)
+# print(tt[1].feature)
+# print(tt[1].threshold)
 # print(tt[1].dataset)
 
-print(tt[0].dataset,tt[1].dataset,tt[2].dataset)
-print(len(tt[0].dataset),len(tt[1].dataset),len(tt[2].dataset))
+# print(tt[0].dataset,tt[1].dataset,tt[2].dataset)
 
+print(len(tt[0].dataset))
+print(len(tt[1].dataset),len(tt[2].dataset))
+print(len(tt[3].dataset),len(tt[4].dataset),len(tt[5].dataset),len(tt[6].dataset),)
+
+print(tt[0].threshold)
+print(tt[1].threshold,tt[2].threshold)
+print(tt[3].threshold,tt[4].threshold,tt[5].threshold,tt[6].threshold,)
 
 
 # print(rn.create_tree())
