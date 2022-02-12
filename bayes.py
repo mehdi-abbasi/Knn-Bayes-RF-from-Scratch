@@ -1,4 +1,7 @@
+from msilib.schema import Feature
 from operator import indexOf
+from shutil import register_unpack_format
+from tokenize import group
 from matplotlib.pyplot import axis
 from numpy import mean,std,prod,linalg,hstack,reshape
 from numpy.random import choice,randint
@@ -54,8 +57,8 @@ class Node:
         self.is_root = is_root
         self.left = None
         self.right = None
-
         self.dataset = None
+        self.group = None
 
 
 class Tree():
@@ -67,6 +70,7 @@ class Tree():
         self.features_num  = floor(log2(abs(self.feature_dim)) + 1)
         self.target = target.reshape(len(target),1)
         self.dataset = np.concatenate((features, self.target), axis=1)
+        self.predictions = []
 
     def add_node(self,node):
         self.nodes.append(node)
@@ -80,6 +84,7 @@ class Tree():
                 best_feature,threshold = self.best_feature(data)
                 node = Node(best_feature,threshold,False if d else True)
                 node.dataset = data
+                node.group = int(mode(node.dataset[:,-1])[0])
                 # print('----------',data)
                 self.add_node(node)
             else:
@@ -88,21 +93,32 @@ class Tree():
                     best_feature,threshold = self.best_feature(node.dataset[node.dataset[:,node.feature] < node.threshold])
                     node.left = Node(best_feature,threshold,False if d else True)
                     node.left.dataset = node.dataset[node.dataset[:,node.feature] < node.threshold]
+                    node.left.group = int(mode(node.left.dataset[:,-1])[0])
                     # print('----------',node.left.dataset)
                     self.add_node(node.left)
                     best_feature,threshold = self.best_feature(node.dataset[node.dataset[:,node.feature] > node.threshold])
                     node.right = Node(best_feature,threshold,False if d else True)
-                    node.right.dataset = node.dataset[node.dataset[:,node.feature] > node.threshold]  
+                    node.right.dataset = node.dataset[node.dataset[:,node.feature] > node.threshold] 
+                    node.right.group = int(mode(node.right.dataset[:,-1])[0]) 
                     # print('----------',node.right.dataset)           
                     self.add_node(node.right)
 
-
-
-
         return self.nodes
 
-    def query(self,data):
-        pass
+    def query(self,data,node=0):
+        if node == 0: node = self.nodes[0]
+        if node.left or node.right:
+            node = node.left if data[node.feature] < node.threshold else node.right
+            return self.query(data,node)
+        else:
+            return node.group
+
+    def predict(self,data):
+        for d in data:
+            self.predictions.append(self.query(d))
+
+        return self.predictions
+
 
     def best_feature(self,dataset):
         selected_features = [int(item) for item in np.linspace(0,self.feature_dim-1,self.feature_dim)[np.random.choice(self.feature_dim,self.features_num,replace=False)]]
@@ -133,11 +149,11 @@ class Tree():
             # print('tru:',tru)
             # print('fls:',fls)
 
-            TP = np.logical_and(data[:,i] > thresholds[i],data[:,-1] == target).sum() / tru 
-            FP = np.logical_and(data[:,i] > thresholds[i],data[:,-1] != target).sum() / tru 
+            TP = np.logical_and(data[:,i] > thresholds[i],data[:,-1] == target).sum() / tru if tru else 1
+            FP = np.logical_and(data[:,i] > thresholds[i],data[:,-1] != target).sum() / tru if tru else 1
 
-            FN = np.logical_and(data[:,i] <= thresholds[i],data[:,-1] == target).sum() / fls
-            TN = np.logical_and(data[:,i] <= thresholds[i],data[:,-1] != target).sum() / fls
+            FN = np.logical_and(data[:,i] <= thresholds[i],data[:,-1] == target).sum() / fls if fls else 1
+            TN = np.logical_and(data[:,i] <= thresholds[i],data[:,-1] != target).sum() / fls if fls else 1
 
             E_tru = -TP * (log2(TP) if TP else 0) + -FP * (log2(FP) if FP else 0)
             E_fls = -FN * (log2(FN) if FN else 0) + -TN * (log2(TN) if TN else 0)
@@ -146,3 +162,39 @@ class Tree():
 
         ret = info.index(max(info))
         return (ret,thresholds[ret])
+
+class RandomForest:
+    def __init__(self,feature,target,trees_no,max_depth):
+        self.feature = feature
+        self.target = target
+        self.trees_no = trees_no
+        self.max_depth = max_depth
+        self.trees = []
+
+    def build(self):
+        for i in range(self.trees_no):
+            tree = Tree(self.feature,self.target,self.max_depth)
+            tree.create_tree()
+            self.trees.append(tree)
+
+    def predict(self,data):
+        predictions = []
+        for t in self.trees:
+            predictions.append(t.predict(data))
+
+        predictions = np.array(predictions)
+
+        prediction = []
+        for i in range(len(predictions[0])):
+            prediction.append(int(mode(predictions[:,i])[0]))
+
+
+        return np.array(prediction)
+
+        
+
+        
+
+
+
+
